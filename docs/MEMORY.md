@@ -23,6 +23,7 @@
 | K3s | v1.31.5+k3s1 | https://get.k3s.io |
 | Rancher Prime | 2.10.3 | Helm repo: `rancher-prime` |
 | Cert-Manager | v1.16.2 | OCI: `dp.apps.rancher.io/charts/cert-manager` |
+| SUSE Observability | 2.2.0 | OCI: `dp.apps.rancher.io/charts/suse-observability` |
 | Helm | latest | https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 |
 | Registry | dp.apps.rancher.io | SUSE Application Collection — fixo |
 
@@ -62,6 +63,15 @@ O bloco de compatibilidade emite avisos mas **não bloqueia** a instalação —
 ### 7. cluster-init no K3s
 O K3s é instalado com `--cluster-init` para habilitar HA futuro sem reinstalação. Mesmo em PoC single-node, isso não tem overhead significativo.
 
+### 8. observability-install.sh — values.yaml temporário
+O script gera um `/tmp/suse-observability-values-*.yaml` com credenciais e license key. Esse arquivo é deletado automaticamente via `trap cleanup EXIT`. Não persistir esse arquivo nem versioná-lo.
+
+### 9. observability-install.sh — kernel tuning obrigatório
+O SUSE Observability requer ajustes de kernel no host antes de instalar, ou os pods entram em crash/OOMKilled com erros `too many open files`. Os parâmetros são aplicados em runtime (`sysctl --system`) e persistidos em `/etc/sysctl.d/99-suse-observability.conf`. O serviço K3s recebe um override `LimitNOFILE=infinity` para herdar aos pods. O script pede confirmação antes de reiniciar K3s, pois isso impacta workloads existentes.
+
+### 10. observability-install.sh — sizing profiles
+O campo `sizing.profile` no values.yaml define o perfil de recursos. Para PoC, sempre usar `trial`. Nunca usar perfis HA em ambientes sem múltiplos nós — os pods ficarão em Pending por falta de recursos.
+
 ---
 
 ## Como Claude deve trabalhar neste repositório
@@ -82,5 +92,6 @@ O K3s é instalado com `--cluster-init` para habilitar HA futuro sem reinstalaç
 | Data | Mudança | Motivo |
 |------|---------|--------|
 | 2026-05-19 | Criação inicial do repositório e script `rancher-install.sh` | Migração de script estático para script interativo com verificação de compatibilidade |
-| 2026-05-19 | Adição de DNS local (etapa 1/8) | Garantir resolução do hostname do Rancher em labs sem DNS externo |
+| 2026-05-19 | Adição de DNS local (etapa 1/8 do rancher-install) | Garantir resolução do hostname do Rancher em labs sem DNS externo |
 | 2026-05-19 | Verificação de compatibilidade Rancher × K3s × Cert-Manager | Prevenir instalações com versões incompatíveis |
+| 2026-05-19 | Criação do `observability-install.sh` | Automação da instalação do SUSE Observability via Application Collection com ajuste de kernel para too many open files |

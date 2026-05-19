@@ -8,12 +8,13 @@ Este documento descreve a estrutura do projeto, decisões de design e como propo
 
 ```
 PoC-Scripts/
-├── README.md                  # Documentação principal e guia de uso
+├── README.md                       # Documentação principal e guia de uso
 ├── docs/
-│   ├── CONTRIBUTING.md        # Este arquivo — guia de contribuição e contexto de IA
-│   └── MEMORY.md              # Contexto de projeto para sessões de Claude
+│   ├── CONTRIBUTING.md             # Este arquivo — guia de contribuição e contexto de IA
+│   └── MEMORY.md                   # Contexto de projeto para sessões de Claude
 ├── scripts/
-│   └── rancher-install.sh     # Script de instalação K3s + Rancher Prime
+│   ├── rancher-install.sh          # Script de instalação K3s + Rancher Prime
+│   └── observability-install.sh    # Script de instalação SUSE Observability
 ```
 
 ---
@@ -49,6 +50,8 @@ PoC-Scripts/
 
 ## Variáveis e defaults atuais
 
+### rancher-install.sh
+
 | Variável | Default atual | Notas |
 |----------|--------------|-------|
 | `K3S_VERSION` | `v1.31.5+k3s1` | Atualizar conforme suporte do Rancher |
@@ -57,6 +60,35 @@ PoC-Scripts/
 | `AC_REGISTRY` | `dp.apps.rancher.io` | Registry fixo do Application Collection — não alterar |
 | `RANCHER_HOSTNAME` | `rancher.virtnet` | Ambiente de PoC — ajustar para DNS real em produção |
 | `RANCHER_REPLICAS` | `1` | PoC usa 1; produção recomenda 3 |
+
+### observability-install.sh
+
+| Variável | Default atual | Notas |
+|----------|--------------|-------|
+| `OBS_VERSION` | `2.2.0` | Versão do Helm chart do SUSE Observability |
+| `OBS_NS` | `suse-observability` | Namespace Kubernetes |
+| `OBS_BASE_URL` | `https://observability.virtnet` | URL de acesso à UI |
+| `SIZING_PROFILE` | `trial` | Ver tabela de sizing no README |
+| `AC_REGISTRY` | `dp.apps.rancher.io` | Registry fixo — não alterar |
+
+---
+
+## Parâmetros de kernel (observability-install.sh)
+
+O script aplica automaticamente os seguintes ajustes no host — necessários para o SUSE Observability funcionar sem erros `too many open files`:
+
+| Parâmetro | Valor | Razão |
+|-----------|-------|-------|
+| `fs.inotify.max_user_instances` | 8192 | Watchers de filesystem por usuário |
+| `fs.inotify.max_user_watches` | 524288 | Total de arquivos monitorados |
+| `fs.file-max` | 1048576 | Descritores de arquivo globais |
+| `vm.max_map_count` | 262144 | Requerido por Victoria Metrics e Kafka |
+| `LimitNOFILE` (K3s service) | infinity | Herança para todos os pods |
+
+Arquivos criados:
+- `/etc/sysctl.d/99-suse-observability.conf`
+- `/etc/security/limits.d/99-suse-observability.conf`
+- `/etc/systemd/system/k3s.service.d/nofile-override.conf`
 
 ---
 
@@ -67,3 +99,4 @@ PoC-Scripts/
 - [ ] Script para RKE2 + Rancher Prime
 - [ ] Integração com Longhorn para storage persistente
 - [ ] Validação de pré-requisitos de hardware (RAM, disco, CPU) antes de instalar
+- [ ] Script de instalação do SUSE Observability Agent (coleta de métricas nos nós)
