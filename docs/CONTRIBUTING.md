@@ -13,7 +13,9 @@ PoC-Scripts/
 │   ├── CONTRIBUTING.md             # Este arquivo — guia de contribuição e contexto de IA
 │   └── MEMORY.md                   # Contexto de projeto para sessões de Claude
 ├── scripts/
+│   ├── kernel-patch.sh             # Patch de kernel (too many open files) — executa antes dos demais
 │   ├── rancher-install.sh          # Script de instalação K3s + Rancher Prime
+│   ├── longhorn-install.sh         # Script de instalação SUSE Storage (Longhorn)
 │   ├── observability-install.sh    # Script de instalação SUSE Observability
 │   └── private-registry-install.sh # Script de instalação SUSE Private Registry
 ```
@@ -61,6 +63,28 @@ PoC-Scripts/
 | `AC_REGISTRY` | `dp.apps.rancher.io` | Registry fixo do Application Collection — não alterar |
 | `RANCHER_HOSTNAME` | `rancher.virtnet` | Ambiente de PoC — ajustar para DNS real em produção |
 | `RANCHER_REPLICAS` | `1` | PoC usa 1; produção recomenda 3 |
+
+### kernel-patch.sh
+
+Script standalone — sem dependência de cluster. Aplica parâmetros de kernel no host.
+
+| Arquivo criado | Conteúdo |
+|----------------|----------|
+| `/etc/sysctl.d/99-suse-k8s-limits.conf` | inotify, file-max, vm.max_map_count |
+| `/etc/security/limits.d/99-suse-k8s-limits.conf` | nofile/nproc limits por usuário |
+| `/etc/systemd/system/k3s.service.d/nofile-override.conf` | LimitNOFILE=infinity |
+
+### longhorn-install.sh
+
+| Variável | Default atual | Notas |
+|----------|--------------|-------|
+| `AC_REGISTRY` | `dp.apps.rancher.io` | Registry fixo — não alterar |
+| `CHART_OCI` | `oci://dp.apps.rancher.io/charts/longhorn` | Chart OCI — não alterar |
+| `LH_VERSION` | `1.8.1` | Versão do Helm chart |
+| `LH_NAMESPACE` | `longhorn-system` | Namespace Kubernetes |
+| `LH_RELEASE` | `longhorn` | Nome do Helm release |
+| `LH_REPLICAS` | `1` | PoC usa 1; produção recomenda 3 |
+| `LH_DATA_PATH` | `/var/lib/longhorn` | Diretório de dados no host |
 
 ### private-registry-install.sh
 

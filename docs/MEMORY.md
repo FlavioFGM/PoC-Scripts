@@ -24,6 +24,7 @@
 | Rancher Prime | 2.14.1 | Helm repo: `rancher-prime` |
 | Cert-Manager | v1.17.2 | OCI: `dp.apps.rancher.io/charts/cert-manager` |
 | SUSE Observability | 2.2.0 | OCI: `dp.apps.rancher.io/charts/suse-observability` |
+| SUSE Storage (Longhorn) | 1.8.1 | OCI: `dp.apps.rancher.io/charts/longhorn` |
 | SUSE Private Registry | latest | OCI: `registry.suse.com/private-registry/private-registry-helm` |
 | Helm | latest | https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 |
 | Registry AC | dp.apps.rancher.io | SUSE Application Collection — fixo |
@@ -75,6 +76,15 @@ O script gera um `/tmp/suse-observability-values-*.yaml` com credenciais e licen
 ### 9. observability-install.sh — kernel tuning obrigatório
 O SUSE Observability requer ajustes de kernel no host antes de instalar, ou os pods entram em crash/OOMKilled com erros `too many open files`. Os parâmetros são aplicados em runtime (`sysctl --system`) e persistidos em `/etc/sysctl.d/99-suse-observability.conf`. O serviço K3s recebe um override `LimitNOFILE=infinity` para herdar aos pods. O script pede confirmação antes de reiniciar K3s, pois isso impacta workloads existentes.
 
+### 11. kernel-patch.sh — patch independente de cluster
+Script standalone que aplica os parâmetros de kernel **antes** de instalar SUSE Security (NeuVector) e/ou SUSE Observability. Os valores são superiores aos usados no observability-install.sh (inotify.max_user_watches = 1048576 vs 524288; file-max = 2097152 vs 1048576) pois ambos os produtos juntos consomem o dobro de recursos. Usar `/etc/sysctl.d/99-suse-k8s-limits.conf` (nome genérico, não conflita com o arquivo do observability-install.sh).
+
+### 12. longhorn-install.sh — imagePullSecret obrigatório no namespace de instalação
+O chart Longhorn da Application Collection requer que o secret `application-collection` seja criado no namespace `longhorn-system` **antes** do helm install, pois o DaemonSet do Longhorn Manager puxa imagens de `dp.apps.rancher.io`. O secret é criado na etapa 2/4, antes do helm upgrade. O padrão `--set "global.imagePullSecrets[0].name=application-collection"` é suficiente para que todos os pods herdem o secret.
+
+### 13. rancher-install.sh — verificação explícita da origem Prime
+Após `helm repo update`, o script valida com `helm search repo rancher-prime/rancher --version $VERSION` que o chart encontrado vem do repositório Prime (`charts.rancher.com/server-charts/prime`), não do community (`releases.rancher.com/server-charts/latest`). Se não encontrar, emite aviso e pede confirmação antes de prosseguir.
+
 ### 10. observability-install.sh — sizing profiles
 O campo `sizing.profile` no values.yaml define o perfil de recursos. Para PoC, sempre usar `trial`. Nunca usar perfis HA em ambientes sem múltiplos nós — os pods ficarão em Pending por falta de recursos.
 
@@ -101,3 +111,6 @@ O campo `sizing.profile` no values.yaml define o perfil de recursos. Para PoC, s
 | 2026-05-19 | Adição de DNS local (etapa 1/8 do rancher-install) | Garantir resolução do hostname do Rancher em labs sem DNS externo |
 | 2026-05-19 | Verificação de compatibilidade Rancher × K3s × Cert-Manager | Prevenir instalações com versões incompatíveis |
 | 2026-05-19 | Criação do `observability-install.sh` | Automação da instalação do SUSE Observability via Application Collection com ajuste de kernel para too many open files |
+| 2026-05-20 | Criação do `kernel-patch.sh` | Script standalone para aplicar patch de kernel antes de instalar SUSE Security + Observability no mesmo cluster |
+| 2026-05-20 | Criação do `longhorn-install.sh` | Instalação do SUSE Storage (Longhorn) via Application Collection com imagePullSecret no namespace longhorn-system |
+| 2026-05-20 | Verificação de origem Prime no `rancher-install.sh` | Adicionado `helm search repo` após repo update para confirmar que o chart Rancher vem do repositório Prime |

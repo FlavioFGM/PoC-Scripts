@@ -8,11 +8,13 @@ Scripts de automação para ambientes de Prova de Conceito (PoC) com tecnologias
 
 | Script | Descrição |
 |--------|-----------|
+| [`scripts/kernel-patch.sh`](scripts/kernel-patch.sh) | Patch de kernel obrigatório para clusters com SUSE Security + SUSE Observability |
 | [`scripts/rancher-install.sh`](scripts/rancher-install.sh) | Instalação interativa de K3s + Rancher Prime via Application Collection |
+| [`scripts/longhorn-install.sh`](scripts/longhorn-install.sh) | Instalação interativa do SUSE Storage (Longhorn) via Application Collection |
 | [`scripts/observability-install.sh`](scripts/observability-install.sh) | Instalação interativa do SUSE Observability via Application Collection |
 | [`scripts/private-registry-install.sh`](scripts/private-registry-install.sh) | Instalação interativa do SUSE Private Registry via SUSE Customer Center |
 
-> **Ordem recomendada:** execute `rancher-install.sh` antes dos demais scripts, pois os outros dependem de um cluster K3s com Helm configurado.
+> **Ordem recomendada:** `kernel-patch.sh` → `rancher-install.sh` → demais scripts na ordem desejada.
 
 ---
 
@@ -270,6 +272,111 @@ kubectl -n suse-observability logs <pod-name> --previous --tail=50
 ```bash
 kubectl get secret -n suse-observability
 helm get values suse-observability -n suse-observability
+```
+
+---
+
+## kernel-patch.sh
+
+Script standalone que aplica configurações de kernel obrigatórias no host para evitar erros `too many open files` em clusters com **SUSE Security (NeuVector)** e/ou **SUSE Observability** instalados.
+
+> Execute **antes** de instalar SUSE Security ou SUSE Observability. Não requer cluster Kubernetes ativo.
+
+### Por que é necessário
+
+NeuVector e SUSE Observability juntos criam alta demanda de inotify watchers, file descriptors e memória mapeada (Kafka, VictoriaMetrics, controladores NeuVector). Sem os ajustes abaixo, pods entram em `CrashLoopBackOff` com erros `too many open files` e `inotify limit reached`.
+
+### Parâmetros aplicados
+
+| Parâmetro | Valor | Motivo |
+|-----------|-------|--------|
+| `fs.inotify.max_user_instances` | 8192 | Watchers por usuário (NeuVector + Observability) |
+| `fs.inotify.max_user_watches` | 1048576 | Total de arquivos monitorados |
+| `fs.file-max` | 2097152 | Descritores globais do sistema |
+| `vm.max_map_count` | 524288 | Victoria Metrics, Kafka e NeuVector |
+| `LimitNOFILE` (K3s service) | infinity | Herança do limite para todos os pods |
+
+### Como usar
+
+```bash
+chmod +x scripts/kernel-patch.sh
+sudo bash scripts/kernel-patch.sh
+```
+
+### Arquivos criados
+
+```
+/etc/sysctl.d/99-suse-k8s-limits.conf
+/etc/security/limits.d/99-suse-k8s-limits.conf
+/etc/systemd/system/k3s.service.d/nofile-override.conf
+```
+
+---
+
+## longhorn-install.sh
+
+Script interativo que instala o **SUSE Storage (Longhorn)** em um cluster K3s existente, utilizando o **SUSE Application Collection** como registry de imagens e charts.
+
+> **Pré-requisito:** cluster K3s com Helm configurado (execute `rancher-install.sh` primeiro).
+
+### Pré-requisitos adicionais
+
+| Requisito | Detalhe |
+|-----------|---------|
+| Subscrição | SUSE Storage ativa no Application Collection |
+| Credenciais AC | Portal apps.rancher.io → User Profile → Tokens |
+| open-iscsi | O script instala automaticamente via zypper se não encontrado |
+| Storage | Disco local disponível no caminho configurado (padrão: `/var/lib/longhorn`) |
+
+### Como usar
+
+```bash
+chmod +x scripts/longhorn-install.sh
+sudo bash scripts/longhorn-install.sh
+```
+
+### Passo a passo da execução
+
+#### Fase 1 — Coleta de variáveis
+
+| Variável | Exemplo | Descrição |
+|----------|---------|-----------|
+| Usuário AC | `usuario@suse.com` | Login do Application Collection |
+| Senha AC | `********` | Sem eco no terminal |
+| Versão do chart | `1.8.1` | Versão do Helm chart Longhorn |
+| Namespace | `longhorn-system` | Namespace de instalação |
+| Release | `longhorn` | Nome do Helm release |
+| Réplicas padrão | `1` | PoC usa 1; produção recomenda 3 |
+| Caminho de dados | `/var/lib/longhorn` | Diretório de storage no host |
+| StorageClass padrão | s/N | Define Longhorn como StorageClass padrão |
+
+#### Fase 2 — Instalação (4 etapas)
+
+```
+[1/4] NAMESPACE    → Cria longhorn-system (idempotente)
+[2/4] SECRET       → Cria imagePullSecret 'application-collection' em longhorn-system
+[3/4] HELM LOGIN   → Autentica Helm no registry OCI do Application Collection
+[4/4] HELM INSTALL → Instala via oci://dp.apps.rancher.io/charts/longhorn
+```
+
+### Troubleshooting
+
+**Pods em Pending (sem storage disponível):**
+```bash
+kubectl get nodes.longhorn.io -n longhorn-system
+kubectl describe nodes.longhorn.io -n longhorn-system
+```
+
+**Interface web (port-forward):**
+```bash
+kubectl port-forward service/longhorn-frontend 8080:80 -n longhorn-system
+# Acesse: http://localhost:8080
+```
+
+**Verificar StorageClass:**
+```bash
+kubectl get storageclass
+kubectl get pv,pvc -A
 ```
 
 ---

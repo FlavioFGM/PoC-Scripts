@@ -318,9 +318,20 @@ kubectl get pods -n cert-manager
 # ══════════════════════════════════════════════════════════════════════════════
 section "8/8" "INSTALAÇÃO DO RANCHER PRIME ($RANCHER_VERSION)"
 
-info "Adicionando repositório rancher-prime..."
+info "Adicionando repositório Rancher Prime..."
 helm repo add rancher-prime https://charts.rancher.com/server-charts/prime
 helm repo update
+
+info "Verificando origem do chart Rancher $RANCHER_VERSION..."
+if helm search repo rancher-prime/rancher --version "$RANCHER_VERSION" 2>/dev/null | grep -q "rancher-prime"; then
+  log "Chart rancher/$RANCHER_VERSION localizado no repositório Prime ✓"
+  log "Origem: https://charts.rancher.com/server-charts/prime"
+else
+  warn "Chart rancher/$RANCHER_VERSION não localizado no repositório Prime."
+  warn "Verifique se a versão $RANCHER_VERSION existe em: https://charts.rancher.com/server-charts/prime"
+  confirm "  Deseja tentar instalar mesmo assim?" || { info "Instalação cancelada."; exit 0; }
+fi
+echo ""
 
 info "Hostname  : $RANCHER_HOSTNAME"
 info "Versão    : $RANCHER_VERSION"
