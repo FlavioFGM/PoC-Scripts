@@ -10,8 +10,9 @@ Scripts de automação para ambientes de Prova de Conceito (PoC) com tecnologias
 |--------|-----------|
 | [`scripts/rancher-install.sh`](scripts/rancher-install.sh) | Instalação interativa de K3s + Rancher Prime via Application Collection |
 | [`scripts/observability-install.sh`](scripts/observability-install.sh) | Instalação interativa do SUSE Observability via Application Collection |
+| [`scripts/private-registry-install.sh`](scripts/private-registry-install.sh) | Instalação interativa do SUSE Private Registry via SUSE Customer Center |
 
-> **Ordem recomendada:** execute `rancher-install.sh` antes de `observability-install.sh`, pois o segundo depende de um cluster K3s com Helm configurado.
+> **Ordem recomendada:** execute `rancher-install.sh` antes dos demais scripts, pois os outros dependem de um cluster K3s com Helm configurado.
 
 ---
 
@@ -55,9 +56,9 @@ O script solicita as seguintes informações antes de iniciar qualquer instalaç
 |----------|---------|-----------|
 | Usuário Application Collection | `usuario@suse.com` | Login do portal apps.rancher.io |
 | Senha Application Collection | `********` | Digitada sem eco no terminal |
-| Versão do K3s | `v1.31.5+k3s1` | Formato: `vX.Y.Z+k3sN` |
-| Versão do Rancher | `2.10.3` | Formato: `X.Y.Z` |
-| Versão do Cert-Manager | `v1.16.2` | Formato: `vX.Y.Z` |
+| Versão do K3s | `v1.33.7+k3s3` | Formato: `vX.Y.Z+k3sN` |
+| Versão do Rancher | `2.14.1` | Formato: `X.Y.Z` |
+| Versão do Cert-Manager | `v1.17.2` | Formato: `vX.Y.Z` |
 | Hostname do Rancher | `rancher.virtnet` | FQDN que será usado para acessar a UI |
 | Número de réplicas | `1` | Para PoC, usar `1` |
 | Senha de bootstrap | `********` | Senha inicial de acesso ao Rancher |
@@ -68,10 +69,10 @@ Antes de instalar, o script valida automaticamente a combinação de versões:
 
 ```
 ── Rancher vs K3s:
-  ✔  Rancher 2.10.3 + K3s 1.31 → compatível (suporte: v1.29 a v1.31)
+  ✔  Rancher 2.14.1 + K3s 1.33 → compatível (suporte: v1.33 a v1.35)
 
 ── Rancher vs Cert-Manager:
-  ✔  Rancher 2.10.3 + Cert-Manager 1.16 → compatível (recomendado: v1.16.x)
+  ✔  Rancher 2.14.1 + Cert-Manager 1.17 → compatível (recomendado: v1.17.x+)
 ```
 
 Se detectar incompatibilidades, exibe avisos e pergunta se deseja continuar.
@@ -80,6 +81,10 @@ Se detectar incompatibilidades, exibe avisos e pergunta se deseja continuar.
 
 | Rancher | K3s suportado | Cert-Manager recomendado |
 |---------|---------------|--------------------------|
+| 2.14.x  | v1.33 – v1.35 | v1.17.x+                 |
+| 2.13.x  | v1.32 – v1.34 | v1.17.x+                 |
+| 2.12.x  | v1.31 – v1.33 | v1.17.x+                 |
+| 2.11.x  | v1.30 – v1.32 | v1.17.x+                 |
 | 2.10.x  | v1.29 – v1.31 | v1.16.x                  |
 | 2.9.x   | v1.28 – v1.30 | v1.14.x – v1.15.x        |
 | 2.8.x   | v1.27 – v1.29 | v1.13.x – v1.14.x        |
@@ -265,6 +270,89 @@ kubectl -n suse-observability logs <pod-name> --previous --tail=50
 ```bash
 kubectl get secret -n suse-observability
 helm get values suse-observability -n suse-observability
+```
+
+---
+
+## private-registry-install.sh
+
+Script interativo que instala o **SUSE Private Registry** em um cluster K3s existente, utilizando o **SUSE Customer Center (SCC)** como registry de origem.
+
+> **Pré-requisito:** cluster K3s com Helm configurado (execute `rancher-install.sh` primeiro). Requer subscrição ativa do SUSE Private Registry.
+
+### Pré-requisitos adicionais
+
+| Requisito | Detalhe |
+|-----------|---------|
+| Subscrição | SUSE Private Registry ativa no SCC |
+| Credenciais SCC | Obtidas em scc.suse.com → selecione organização → Proxies |
+| Storage | Persistent Volumes disponíveis no cluster |
+| DNS | Hostname do registry deve resolver para o IP do Ingress |
+
+### Como usar
+
+```bash
+chmod +x scripts/private-registry-install.sh
+sudo bash scripts/private-registry-install.sh
+```
+
+### Passo a passo da execução
+
+#### Fase 1 — Coleta de variáveis
+
+| Variável | Exemplo | Descrição |
+|----------|---------|-----------|
+| Usuário SCC (Mirroring) | `usuario@suse.com` | Credencial de espelhamento do SCC |
+| Senha SCC (Mirroring) | `********` | Sem eco no terminal |
+| Nome do release Helm | `suse-registry` | Nome do release Kubernetes |
+| Namespace | `private-registry` | Namespace de instalação |
+| Hostname do Registry | `registry.empresa.com` | FQDN de acesso ao registry |
+| Storage Class | *(opcional)* | Padrão do cluster se vazio |
+| TLS próprio | *(opcional)* | Caminho para cert e chave |
+
+#### Fase 2 — Instalação (4 etapas)
+
+```
+[1/4] NAMESPACE    → Cria namespace (idempotente)
+[2/4] AUTENTICAÇÃO → Login Helm no SCC + criação de imagePullSecret
+[3/4] TLS          → Cria secret TLS com certificado próprio (opcional)
+[4/4] HELM INSTALL → Instala via oci://registry.suse.com/private-registry/private-registry-helm
+```
+
+#### Fase 3 — Conclusão
+
+```
+╔══════════════════════════════════════════════════════════════════╗
+║              INSTALAÇÃO CONCLUÍDA COM SUCESSO!                  ║
+╚══════════════════════════════════════════════════════════════════╝
+
+  Registry URL   : https://registry.empresa.com
+  Usuário admin  : admin
+  Senha admin    : <extraída do secret Kubernetes>
+```
+
+### Troubleshooting
+
+**Pods em Pending (sem storage):**
+```bash
+kubectl get pvc -n private-registry
+kubectl describe pvc -n private-registry
+```
+
+**Erro de autenticação no pull de imagens:**
+```bash
+kubectl get secret suse-registry -n private-registry -o yaml
+```
+
+**Verificar Ingress e IP:**
+```bash
+kubectl get ingress -n private-registry
+```
+
+**Obter senha admin manualmente:**
+```bash
+kubectl get secret --namespace private-registry suse-registry-harbor-core \
+  -o jsonpath="{.data.HARBOR_ADMIN_PASSWORD}" | base64 -d; echo
 ```
 
 ---

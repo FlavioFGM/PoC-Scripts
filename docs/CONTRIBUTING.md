@@ -14,7 +14,8 @@ PoC-Scripts/
 │   └── MEMORY.md                   # Contexto de projeto para sessões de Claude
 ├── scripts/
 │   ├── rancher-install.sh          # Script de instalação K3s + Rancher Prime
-│   └── observability-install.sh    # Script de instalação SUSE Observability
+│   ├── observability-install.sh    # Script de instalação SUSE Observability
+│   └── private-registry-install.sh # Script de instalação SUSE Private Registry
 ```
 
 ---
@@ -54,12 +55,22 @@ PoC-Scripts/
 
 | Variável | Default atual | Notas |
 |----------|--------------|-------|
-| `K3S_VERSION` | `v1.31.5+k3s1` | Atualizar conforme suporte do Rancher |
-| `RANCHER_VERSION` | `2.10.3` | Verificar https://github.com/rancher/rancher/releases |
-| `CERTMGR_VERSION` | `v1.16.2` | Verificar https://github.com/cert-manager/cert-manager/releases |
+| `K3S_VERSION` | `v1.33.7+k3s3` | Atualizar conforme suporte do Rancher |
+| `RANCHER_VERSION` | `2.14.1` | Verificar https://github.com/rancher/rancher/releases |
+| `CERTMGR_VERSION` | `v1.17.2` | Verificar https://github.com/cert-manager/cert-manager/releases |
 | `AC_REGISTRY` | `dp.apps.rancher.io` | Registry fixo do Application Collection — não alterar |
 | `RANCHER_HOSTNAME` | `rancher.virtnet` | Ambiente de PoC — ajustar para DNS real em produção |
 | `RANCHER_REPLICAS` | `1` | PoC usa 1; produção recomenda 3 |
+
+### private-registry-install.sh
+
+| Variável | Default atual | Notas |
+|----------|--------------|-------|
+| `SCC_REGISTRY` | `registry.suse.com` | Registry SCC — não alterar |
+| `CHART_OCI` | `oci://registry.suse.com/private-registry/private-registry-helm` | Chart OCI — não alterar |
+| `RELEASE_NAME` | `suse-registry` | Nome do Helm release |
+| `PR_NAMESPACE` | `private-registry` | Namespace Kubernetes |
+| `PR_HOSTNAME` | `registry.<hostname>` | FQDN de acesso ao registry |
 
 ### observability-install.sh
 
@@ -100,3 +111,4 @@ Arquivos criados:
 - [ ] Integração com Longhorn para storage persistente
 - [ ] Validação de pré-requisitos de hardware (RAM, disco, CPU) antes de instalar
 - [ ] Script de instalação do SUSE Observability Agent (coleta de métricas nos nós)
+- [ ] Configuração de replicação entre instâncias do SUSE Private Registry

@@ -83,9 +83,9 @@ echo ""
 echo -e "${BOLD}── Versões dos Componentes ────────────────────────────────────────${NC}"
 echo -e "  ${DIM}Referência: https://www.suse.com/suse-rancher/support-matrix/${NC}"
 echo ""
-prompt K3S_VERSION      "Versão do K3s       (ex: v1.31.5+k3s1)" "v1.31.5+k3s1"
-prompt RANCHER_VERSION  "Versão do Rancher   (ex: 2.10.3)"        "2.10.3"
-prompt CERTMGR_VERSION  "Versão Cert-Manager (ex: v1.16.2)"       "v1.16.2"
+prompt K3S_VERSION      "Versão do K3s       (ex: v1.33.7+k3s3)" "v1.33.7+k3s3"
+prompt RANCHER_VERSION  "Versão do Rancher   (ex: 2.14.1)"        "2.14.1"
+prompt CERTMGR_VERSION  "Versão Cert-Manager (ex: v1.17.2)"       "v1.17.2"
 echo ""
 
 echo -e "${BOLD}── Configuração do Rancher ────────────────────────────────────────${NC}"
@@ -118,6 +118,10 @@ COMPAT_WARN=false
 echo -e "  ${BOLD}Rancher vs K3s:${NC}"
 if [ "$RANCHER_MAJOR" = "2" ]; then
   case "$RANCHER_MINOR" in
+    14) SUPPORTED_K3S="33 34 35"; NOTE="v1.33 a v1.35" ;;
+    13) SUPPORTED_K3S="32 33 34"; NOTE="v1.32 a v1.34" ;;
+    12) SUPPORTED_K3S="31 32 33"; NOTE="v1.31 a v1.33" ;;
+    11) SUPPORTED_K3S="30 31 32"; NOTE="v1.30 a v1.32" ;;
     10) SUPPORTED_K3S="29 30 31"; NOTE="v1.29 a v1.31" ;;
     9)  SUPPORTED_K3S="28 29 30"; NOTE="v1.28 a v1.30" ;;
     8)  SUPPORTED_K3S="27 28 29"; NOTE="v1.27 a v1.29" ;;
@@ -151,6 +155,7 @@ elif [ "$CERTMGR_MINOR" -lt 11 ]; then
   COMPAT_WARN=true
 else
   case "$RANCHER_MINOR" in
+    14|13|12|11) REC_CM="v1.17.x+"; MIN_CM=15 ;;
     10) REC_CM="v1.16.x"; MIN_CM=14 ;;
     9)  REC_CM="v1.14.x ou v1.15.x"; MIN_CM=13 ;;
     8)  REC_CM="v1.13.x ou v1.14.x"; MIN_CM=11 ;;

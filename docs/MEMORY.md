@@ -20,17 +20,23 @@
 
 | Componente | Versão padrão | Origem |
 |------------|--------------|--------|
-| K3s | v1.31.5+k3s1 | https://get.k3s.io |
-| Rancher Prime | 2.10.3 | Helm repo: `rancher-prime` |
-| Cert-Manager | v1.16.2 | OCI: `dp.apps.rancher.io/charts/cert-manager` |
+| K3s | v1.33.7+k3s3 | https://get.k3s.io |
+| Rancher Prime | 2.14.1 | Helm repo: `rancher-prime` |
+| Cert-Manager | v1.17.2 | OCI: `dp.apps.rancher.io/charts/cert-manager` |
 | SUSE Observability | 2.2.0 | OCI: `dp.apps.rancher.io/charts/suse-observability` |
+| SUSE Private Registry | latest | OCI: `registry.suse.com/private-registry/private-registry-helm` |
 | Helm | latest | https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 |
-| Registry | dp.apps.rancher.io | SUSE Application Collection — fixo |
+| Registry AC | dp.apps.rancher.io | SUSE Application Collection — fixo |
+| Registry SCC | registry.suse.com | SUSE Customer Center — Private Registry |
 
-### Matriz de compatibilidade (última atualização: 2026-05-19)
+### Matriz de compatibilidade (última atualização: 2026-05-20)
 
 | Rancher | K3s suportado | Cert-Manager recomendado |
 |---------|---------------|--------------------------|
+| 2.14.x  | v1.33 – v1.35 | v1.17.x+ (mín: 1.15)     |
+| 2.13.x  | v1.32 – v1.34 | v1.17.x+ (mín: 1.15)     |
+| 2.12.x  | v1.31 – v1.33 | v1.17.x+ (mín: 1.15)     |
+| 2.11.x  | v1.30 – v1.32 | v1.17.x+ (mín: 1.14)     |
 | 2.10.x  | v1.29 – v1.31 | v1.16.x (mín: 1.14)      |
 | 2.9.x   | v1.28 – v1.30 | v1.14 – v1.15 (mín: 1.13)|
 | 2.8.x   | v1.27 – v1.29 | v1.13 – v1.14 (mín: 1.11)|
